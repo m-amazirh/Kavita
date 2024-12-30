@@ -1237,7 +1237,7 @@ public class OpdsController : BaseApiController
 
         try
         {
-            var path = _cacheService.GetCachedPagePath(chapter.Id, pageNumber);
+            var path = await GetPage(chapterId, pageNumber);
             if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path))
                 return BadRequest(await _localizationService.Translate(userId, "no-image-for-page", pageNumber));
 
@@ -1359,5 +1359,17 @@ public class OpdsController : BaseApiController
         _xmlSerializer.Serialize(sm, feed);
 
         return sm.ToString().Replace("utf-16", "utf-8"); // Chunky cannot accept UTF-16 feeds
+    }
+
+    private async Task<String> GetPage(int chapterId, int pageNumber)
+    {
+        var path = _cacheService.GetCachedPagePath(chapterId, pageNumber);
+        if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path))
+        {
+            _cacheService.CleanupChapters([chapterId]);
+            await _cacheService.Ensure(chapterId, true);
+        }
+
+        return _cacheService.GetCachedPagePath(chapterId, pageNumber);
     }
 }
